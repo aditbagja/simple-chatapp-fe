@@ -1,6 +1,11 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useFormik } from "formik";
 import { useParams } from "react-router-dom";
 import * as Yup from "yup";
+import { useSocket } from "../utils/useSocket";
+import { getSocketMessage } from "../utils/apis";
+import { useEffect, useRef, useState } from "react";
+import BalloonChat from "../components/BalloonChat";
 
 const initialValues = {
   message: "",
@@ -11,50 +16,78 @@ const validationSchema = Yup.object().shape({
 });
 
 const ChatRoom = () => {
-  const params = useParams();
+  const { chatRoom } = useParams();
   const username = sessionStorage.getItem("username");
+  const [messageList, setMessageList] = useState([]);
+  const [listUsername, setListUsername] = useState([]);
+  const messageEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messageEndRef.current?.lastElementChild?.scrollIntoView({
+      behavior: "smooth",
+    });
+  };
+
+  const { sendMessage, socketIoResponse } = useSocket(chatRoom, username);
+
+  const addUsernameToList = (newUsername) => {
+    if (!listUsername.includes(newUsername)) {
+      setListUsername([...listUsername, newUsername]);
+    }
+  };
+
+  const fetchMessage = async () => {
+    const response = await getSocketMessage(chatRoom);
+    setMessageList(
+      response.filter((message) => {
+        if (message.messageType === "CLIENT") {
+          addUsernameToList(message.username);
+          return message;
+        }
+      })
+    );
+  };
+
+  useEffect(() => {
+    fetchMessage();
+  }, []);
+
+  useEffect(() => {
+    fetchMessage();
+  }, [socketIoResponse]);
 
   const formik = useFormik({
     initialValues: initialValues,
     validationSchema: validationSchema,
     onSubmit: (values) => {
-      console.log(values);
+      sendMessage({
+        chatMessage: values.message,
+      });
+
       formik.resetForm();
+      scrollToBottom();
+      fetchMessage();
     },
   });
 
   return (
-    <section className="w-full h-full py-32 lg:py-52">
+    <section className="w-full h-full py-32 xl:py-[10vh]">
       <div className="container mx-auto">
         <div className="px-5 xl:px-0">
           <div className="xl:w-1/2 xl:mx-auto">
             <h1 className="font-bold text-2xl">Halo, {username}!</h1>
             <div className="bg-slate-200 mt-5">
               <div className="bg-sky-500 rounded-t-md p-2 text-white">
-                <p className="font-bold text-lg">Chat Room {params.chatRoom}</p>
+                <p className="font-bold text-lg">Chat Room {chatRoom}</p>
+                <p className="text-sm">{listUsername.join(", ")}</p>
               </div>
               <div className="min-h-[30rem] p-2 flex flex-col justify-between">
-                <div>
-                  {/* Receiver Balloon Chat */}
-                  <div className="flex flex-col gap-1 w-3/4 md:w-1/2">
-                    <p className="text-sm">Username</p>
-                    <div className="bg-gray-500 p-3 overflow-hidden break-words rounded-xl text-white">
-                      <p>
-                        Isi Chat asdasdsadsadsadasdsaddadsadadasdasdasdasdas
-                      </p>
-                    </div>
-                    <p className="text-sm text-right">10:10</p>
-                  </div>
-
-                  {/* Sender Balloon Chat */}
-                  <div className="flex flex-col ml-auto gap-1 w-3/4 md:w-1/2">
-                    <div className="bg-sky-500 p-3 overflow-hidden break-words rounded-xl text-white">
-                      <p>
-                        Isi Chat asdasdsadsadsadasdsaddadsadadasdasdasdasdas
-                      </p>
-                    </div>
-                    <p className="text-sm text-left">10:11</p>
-                  </div>
+                <div className="h-[30rem] overflow-auto my-3">
+                  <BalloonChat
+                    messageList={messageList}
+                    username={username}
+                    messageEndRef={messageEndRef}
+                  />
                 </div>
 
                 <form className="flex gap-3" onSubmit={formik.handleSubmit}>
