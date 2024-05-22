@@ -20,7 +20,6 @@ const Login = () => {
     validationSchema: validationSchema,
     onSubmit: (values) => {
       sessionStorage.setItem("username", values.username);
-      sessionStorage.setItem("chatRoom", values.chatRoom);
 
       setTimeout(() => {
         navigate(`/chat/${values.chatRoom}`);
@@ -29,7 +28,7 @@ const Login = () => {
   });
 
   return (
-    <section className="w-full h-full py-32 lg:py-72 my-auto">
+    <section className="w-full h-full py-32 lg:py-72">
       <div className="container mx-auto">
         <div className="px-5 xl:px-0">
           <div className="bg-slate-100 p-5 rounded-lg xl:w-1/2 xl:mx-auto">
